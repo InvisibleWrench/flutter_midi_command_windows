@@ -32,9 +32,9 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
     _rxStream = _rxStreamController.stream;
   }
 
-  /// The linux implementation of [MidiCommandPlatform]
+  /// The windows implementation of [MidiCommandPlatform]
   ///
-  /// This class implements the `package:flutter_midi_command_platform_interface` functionality for linux
+  /// This class implements the `package:flutter_midi_command_platform_interface` functionality for windows
   static void registerWith() {
     print("register FlutterMidiCommandWindows");
     MidiCommandPlatform.instance = FlutterMidiCommandWindows();
