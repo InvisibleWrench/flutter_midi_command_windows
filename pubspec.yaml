@@ -4,13 +4,14 @@ version: 0.0.1-dev.1
 homepage: https://github.com/InvisibleWrench/FlutterMidiCommand
 
 environment:
-  sdk: ">=3.0.0 <4.0.0"
+  sdk: ">=3.1.0 <4.0.0"
   flutter: ">=1.20.0"
 
 dependencies:
   flutter:
     sdk: flutter
   flutter_midi_command_platform_interface: ^0.4.0
+  ffi: ^2.1.0
   win32: ^5.0.9
 
 dev_dependencies:

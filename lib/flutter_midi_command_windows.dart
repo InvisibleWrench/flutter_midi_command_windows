@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'package:flutter_midi_command_platform_interface/flutter_midi_command_platform_interface.dart';
 
 import 'dart:ffi';
-
 import 'package:ffi/ffi.dart';
 import 'package:win32/win32.dart';
 
