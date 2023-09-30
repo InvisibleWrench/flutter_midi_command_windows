@@ -1,3 +1,13 @@
+## 0.0.1-dev.4
+
+* Fixed sending using midiOutLongMsg
+
+
+## 0.0.1-dev.3
+
+* Def update
+
+
 ## 0.0.1-dev.2
 
 * License update

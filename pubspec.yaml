@@ -1,6 +1,6 @@
 name: flutter_midi_command_windows
 description: FlutterMidiCommand for windows.
-version: 0.0.1-dev.2
+version: 0.0.1-dev.4
 homepage: https://github.com/InvisibleWrench/FlutterMidiCommand
 
 environment:
@@ -25,4 +25,4 @@ flutter:
     implements: flutter_midi_command
     platforms:
       windows:
-        dartPluginClass: flutter_midi_command_windows
+        dartPluginClass: FlutterMidiCommandWindows
