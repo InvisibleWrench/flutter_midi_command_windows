@@ -1,3 +1,8 @@
+## 0.0.1-dev.5
+
+* Added device monitoring, to notify when devices attach/detach
+
+
 ## 0.0.1-dev.4
 
 * Fixed sending using midiOutLongMsg

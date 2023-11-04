@@ -5,17 +5,18 @@ import 'package:flutter_midi_command_platform_interface/flutter_midi_command_pla
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 import 'package:win32/win32.dart';
+import 'package:flutter_midi_command_windows/device_monitor.dart';
 
 class FlutterMidiCommandWindows extends MidiCommandPlatform {
   StreamController<MidiPacket> _rxStreamController =
-  StreamController<MidiPacket>.broadcast();
+      StreamController<MidiPacket>.broadcast();
   late Stream<MidiPacket> _rxStream;
   StreamController<String> _setupStreamController =
-  StreamController<String>.broadcast();
+      StreamController<String>.broadcast();
   late Stream<String> _setupStream;
 
   Map<String, WindowsMidiDevice> _connectedDevices =
-  Map<String, WindowsMidiDevice>();
+      Map<String, WindowsMidiDevice>();
 
   factory FlutterMidiCommandWindows() {
     if (_instance == null) {
@@ -29,6 +30,14 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
   FlutterMidiCommandWindows._() {
     _setupStream = _setupStreamController.stream;
     _rxStream = _rxStreamController.stream;
+
+    final dm = DeviceMonitor();
+    dm.runMessagesIsolate();
+    dm.messages.listen((message) {
+      if (["deviceAppeared", "deviceDisappeared"].contains(message.event)) {
+        _setupStreamController.add(message.event);
+      }
+    });
   }
 
   /// The windows implementation of [MidiCommandPlatform]
@@ -39,11 +48,12 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
     MidiCommandPlatform.instance = FlutterMidiCommandWindows();
   }
 
+  //#region
   @override
   Future<List<MidiDevice>> get devices async {
     var devices = Map<String, WindowsMidiDevice>();
 
-    Pointer<MIDIINCAPS> inCaps = calloc<MIDIINCAPS>();
+    Pointer<MIDIINCAPS> inCaps = malloc<MIDIINCAPS>();
     int nMidiDeviceNum = midiInGetNumDevs();
 
     for (int i = 0; i < nMidiDeviceNum; ++i) {
@@ -53,14 +63,14 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
       print(
           'found IN at id $i for device $name address: ${inCaps.address} ref: ${inCaps.ref.hashCode} wMid ${inCaps.ref.wMid} wPid ${inCaps.ref.wPid}');
       devices[name] = WindowsMidiDevice(name, _rxStreamController,
-          _setupStreamController, _cb.nativeFunction.address)
+          _setupStreamController, _midiCB.nativeFunction.address)
         ..addInput(i, inCaps.ref)
         ..connected = isConnected;
     }
 
     free(inCaps);
 
-    Pointer<MIDIOUTCAPS> outCaps = calloc<MIDIOUTCAPS>();
+    Pointer<MIDIOUTCAPS> outCaps = malloc<MIDIOUTCAPS>();
     nMidiDeviceNum = midiOutGetNumDevs();
 
     for (int i = 0; i < nMidiDeviceNum; ++i) {
@@ -75,7 +85,7 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
       } else {
         bool isConnected = _connectedDevices.containsKey(name);
         devices[name] = WindowsMidiDevice(name, _rxStreamController,
-            _setupStreamController, _cb.nativeFunction.address)
+            _setupStreamController, _midiCB.nativeFunction.address)
           ..addOutput(i, outCaps.ref)
           ..connected = isConnected;
       }
@@ -87,7 +97,8 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
   }
 
   /// Prepares Bluetooth system
-  @override Future<void> startBluetoothCentral() async {
+  @override
+  Future<void> startBluetoothCentral() async {
     return Future.error("Not available on windows");
   }
 
@@ -136,7 +147,9 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
   @override
   void teardown() {
     // Close callback isolate
-    _cb.close();
+    _midiCB.close();
+
+    DeviceMonitor().destroy();
 
     _connectedDevices.values.forEach((device) {
       disconnectDevice(device, remove: false);
@@ -201,6 +214,7 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
     }
     return null;
   }
+  //#endregion
 }
 
 String midiErrorMessage(int status) {
@@ -222,11 +236,11 @@ String midiErrorMessage(int status) {
   }
 }
 
-NativeCallable<Void Function(IntPtr, Uint32, IntPtr, IntPtr, IntPtr)> _cb = NativeCallable<MidiInProc>.listener(_onMidiData);
+NativeCallable<Void Function(IntPtr, Uint32, IntPtr, IntPtr, IntPtr)> _midiCB =
+    NativeCallable<MidiInProc>.listener(_onMidiData);
 
 void _onMidiData(
     int hMidiIn, int wMsg, int dwInstance, int dwParam1, int dwParam2) {
-
   //print('midi data $hMidiIn, $wMsg, $dwInstance, $dwParam1, $dwParam2');
 
   var dev = FlutterMidiCommandWindows().findMidiDeviceForSource(hMidiIn);
@@ -241,7 +255,7 @@ void _onMidiData(
       dev?.connected = false;
       break;
     case MIM_DATA:
-    // print("data! $dwParam1 at: $dwParam2");
+      // print("data! $dwParam1 at: $dwParam2");
       var data = Uint32List.fromList([dwParam1]).buffer.asUint8List();
       dev?.handleData(data, dwParam2);
       break;
@@ -271,8 +285,8 @@ class WindowsMidiDevice extends MidiDevice {
   StreamController<MidiPacket> _rxStreamCtrl;
   StreamController<String> _setupStreamController;
 
-  final hMidiInDevicePtr = calloc<HMIDIIN>();
-  final hMidiOutDevicePtr = calloc<IntPtr>();
+  final hMidiInDevicePtr = malloc<HMIDIIN>();
+  final hMidiOutDevicePtr = malloc<IntPtr>();
 
   int callbackAddress;
 
@@ -303,8 +317,8 @@ class WindowsMidiDevice extends MidiDevice {
         return false;
       } else {
         // Setup buffer
-        _midiInBuffer = calloc<BYTE>(_bufferSize);
-        _midiInHeader = calloc<MIDIHDR>();
+        _midiInBuffer = malloc<BYTE>(_bufferSize);
+        _midiInHeader = malloc<MIDIHDR>();
         _midiInHeader.ref.lpData = _midiInBuffer as LPSTR;
         _midiInHeader.ref.dwBufferLength = _bufferSize;
         _midiInHeader.ref.dwFlags = 0;
@@ -342,8 +356,8 @@ class WindowsMidiDevice extends MidiDevice {
         return false;
       }
 
-      _midiOutBuffer = calloc<BYTE>(_bufferSize);
-      _midiOutHeader = calloc<MIDIHDR>();
+      _midiOutBuffer = malloc<BYTE>(_bufferSize);
+      _midiOutHeader = malloc<MIDIHDR>();
     }
     connected = true;
     _setupStreamController.add("deviceConnected");
@@ -351,7 +365,6 @@ class WindowsMidiDevice extends MidiDevice {
   }
 
   bool disconnect() {
-
     int result;
     if (_ins.length > 0) {
       result = midiInReset(hMidiInDevicePtr.value);
@@ -426,7 +439,8 @@ class WindowsMidiDevice extends MidiDevice {
     // Set data in out buffer
     _midiOutBuffer.asTypedList(data.length).setAll(0, data);
     _midiOutHeader.ref.lpData = _midiOutBuffer as LPSTR;
-    _midiOutHeader.ref.dwBytesRecorded = _midiOutHeader.ref.dwBufferLength = data.length;
+    _midiOutHeader.ref.dwBytesRecorded =
+        _midiOutHeader.ref.dwBufferLength = data.length;
     _midiOutHeader.ref.dwFlags = 0;
 
     int result = midiOutPrepareHeader(
@@ -435,18 +449,19 @@ class WindowsMidiDevice extends MidiDevice {
       print("HDR OUT PREP ERROR: ${midiErrorMessage(result)}");
     }
 
-    result = midiOutLongMsg(hMidiOutDevicePtr.value, _midiOutHeader, sizeOf<MIDIHDR>());
+    result = midiOutLongMsg(
+        hMidiOutDevicePtr.value, _midiOutHeader, sizeOf<MIDIHDR>());
     if (result != 0) {
       print("SEND ERROR($result): ${midiErrorMessage(result)}");
     }
 
-    result = midiOutUnprepareHeader(hMidiOutDevicePtr.value, _midiOutHeader, sizeOf<MIDIHDR>());
+    result = midiOutUnprepareHeader(
+        hMidiOutDevicePtr.value, _midiOutHeader, sizeOf<MIDIHDR>());
     if (result != 0) {
       print("OUT UNPREEOARE ERROR($result): ${midiErrorMessage(result)}");
     }
   }
 }
-
 
 // This API function is missing from win32
 final _winmm = DynamicLibrary.open('winmm.dll');
