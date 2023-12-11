@@ -12,8 +12,6 @@ var _windowId;
 class DeviceMonitor {
   final _receiver = ReceivePort();
 
-
-
   Stream<_Message> get messages => _receiver.cast<_Message>();
 
   late Isolate _iso;
@@ -24,6 +22,7 @@ class DeviceMonitor {
 
   void destroy() {
     UnregisterDeviceNotification(_windowId);
+    _receiver.close();
     _iso.kill();
   }
 }
