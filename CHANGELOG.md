@@ -1,3 +1,10 @@
+## 0.0.1-dev.6
+
+* Split into windows_midi_device.
+* Better port enumeration
+* Better device monitoring.
+
+
 ## 0.0.1-dev.5
 
 * Added device monitoring, to notify when devices attach/detach

@@ -7,34 +7,46 @@ import 'package:win32/win32.dart';
 
 late SendPort _sender;
 
-var _windowId;
 
 class DeviceMonitor {
+
+  factory DeviceMonitor() {
+    _instance ??= DeviceMonitor._();
+    return _instance!;
+  }
+
+  static DeviceMonitor? _instance;
+
+  DeviceMonitor._() {
+    _runMessagesIsolate();
+  }
+
+
   final _receiver = ReceivePort();
 
-  Stream<_Message> get messages => _receiver.cast<_Message>();
+  Stream<_Message> get messages =>  _receiver.cast<_Message>();
 
   late Isolate _iso;
 
-  void runMessagesIsolate() async {
-    _iso = await Isolate.spawn(_entryPoint, _receiver.sendPort);
+  void _runMessagesIsolate() async {
+    _iso = await Isolate.spawn(_device_monitor, _receiver.sendPort);
   }
 
   void destroy() {
-    UnregisterDeviceNotification(_windowId);
+    print("close receiver");
     _receiver.close();
-    _iso.kill();
   }
 }
 
-void _entryPoint(SendPort sender) {
+void _device_monitor(SendPort sender) {
   _sender = sender;
+
+  bool run = true;
 
   final hInstance = GetModuleHandle(nullptr);
   const style = CS_HREDRAW | CS_VREDRAW;
   final lpfnWndProc =
-      Pointer.fromFunction<LRESULT Function(HWND, UINT, WPARAM, LPARAM)>(
-          _wndProc, 0);
+      Pointer.fromFunction<LRESULT Function(HWND, UINT, WPARAM, LPARAM)>(_wndProc, 0);
   final lpszClassName = 'STATIC'.toNativeUtf16();
   final lpWndClass = calloc<WNDCLASS>()
     ..ref.hInstance = hInstance
@@ -52,7 +64,7 @@ void _entryPoint(SendPort sender) {
       throw Exception(statusCode);
     }
 
-    _windowId = CreateWindow(
+    var _windowId = CreateWindow(
         lpszClassName,
         "Message-Only FMCWin".toNativeUtf16(),
         0,
@@ -65,7 +77,39 @@ void _entryPoint(SendPort sender) {
         NULL,
         nullptr);
 
-    GetMessage(msg, NULL, WM_QUIT, WM_QUIT);
+    print(_windowId);
+
+    UpdateWindow(_windowId);
+
+    int bRet = 0;
+
+    while (run)
+    {
+      // Use PeekMessage instead of GetMessage
+      bRet = PeekMessage(msg, NULL, 0, 0, PM_REMOVE);
+
+      // Check if a message is available
+      if (bRet != 0)
+      {
+        // Check for a quit message
+        print(msg.ref.message);
+        if (msg.ref.message == WM_QUIT) {
+          print("quit");
+          break;
+        }
+
+        TranslateMessage(msg);
+        DispatchMessage(msg);
+      }
+      else
+      {
+        // Perform other tasks here when there are no messages
+        // For example, update game logic, perform background processing, etc.
+      }
+    }
+
+
+    print("done");
   } catch (e) {
     print("ERROR $e");
   } finally {
@@ -73,53 +117,81 @@ void _entryPoint(SendPort sender) {
     free(lpszClassName);
     free(lpWndClass);
     free(msg);
+    print("finally");
   }
+  print("EOT");
 }
 
+int _deviceNotifyPointer = 0;
+
 int _wndProc(int hWnd, int uMsg, int wParam, int lParam) {
-  if (uMsg == WM_CREATE) {
-    // Message window created, register for notifications
-    final notificationFilter = calloc<DEV_BROADCAST_DEVICEINTERFACE_W>()
-      ..ref.dbcc_size = sizeOf<DEV_BROADCAST_DEVICEINTERFACE_W>()
-      ..ref.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE
-      ..ref.dbcc_classguid.setGUID(
-          GUID_DEVINTERFACE_USB_DEVICE); //  setGUID("36FC9E60-C465-11CF-8056-444553540000");=
 
-    try {
-      final deviceNotifyPointer = RegisterDeviceNotification(
-        hWnd,
-        notificationFilter,
-        DEVICE_NOTIFY_ALL_INTERFACE_CLASSES,
-      );
-      if (deviceNotifyPointer == NULL) {
-        final statusCode = GetLastError();
-        print("failed to register for device notifications: ${statusCode}");
-        throw Exception(statusCode);
-      } else {
-        print("Successfully registered for device notifications");
+  switch(uMsg) {
+    case WM_CLOSE:
+      print("close $_deviceNotifyPointer ");
+      if (_deviceNotifyPointer != 0) {
+        UnregisterDeviceNotification(_deviceNotifyPointer);
+        _deviceNotifyPointer = NULL;
       }
-    } catch (e) {
-      print("Device Notification Registration Error: $e");
-    } finally {
-      calloc.free(notificationFilter);
-    }
-  }
 
-  if (uMsg == WM_DEVICECHANGE) {
-    if (wParam == DBT_DEVICEARRIVAL) {
-      //print("device added");
-      //DEV_BROADCAST_HDR hdr = Pointer<DEV_BROADCAST_HDR>.fromAddress(lParam).ref;
-      //print("HDR type:${hdr.dbcc_devicetype}");
-      //if (hdr.dbcc_devicetype == 5) {
-        //DEV_BROADCAST_DEVICEINTERFACE_W device =
-        //    Pointer<DEV_BROADCAST_DEVICEINTERFACE_W>.fromAddress(lParam).ref;
-        //var deviceName = convertUint16ArrayToString(device.dbcc_name);
-        //print("device name $deviceName");
-        _sender.send(_Message("deviceAppeared"));
-      //}
-    } else if (wParam == DBT_DEVICEREMOVECOMPLETE) {
-      _sender.send(_Message("deviceDisappeared"));
-    }
+      DestroyWindow(hWnd);
+      break;
+
+    case WM_DESTROY:
+      print("destroy");
+      PostQuitMessage(0);
+      break;
+
+    case WM_CREATE:
+      {
+        print("create");
+        // Message window created, register for notifications
+        final notificationFilter = calloc<DEV_BROADCAST_DEVICEINTERFACE_W>()
+          ..ref.dbcc_size = sizeOf<DEV_BROADCAST_DEVICEINTERFACE_W>()
+          ..ref.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE
+          ..ref.dbcc_classguid.setGUID(
+              GUID_DEVINTERFACE_USB_DEVICE); //  setGUID("36FC9E60-C465-11CF-8056-444553540000");=
+
+        try {
+          _deviceNotifyPointer = RegisterDeviceNotification(
+            hWnd,
+            notificationFilter,
+            DEVICE_NOTIFY_ALL_INTERFACE_CLASSES,
+          );
+          if (_deviceNotifyPointer == NULL) {
+            final statusCode = GetLastError();
+            print("failed to register for device notifications: ${statusCode}");
+            throw Exception(statusCode);
+          } else {
+            print("Successfully registered for device notifications $_deviceNotifyPointer");
+          }
+        } catch (e) {
+          print("Device Notification Registration Error: $e");
+        } finally {
+          calloc.free(notificationFilter);
+        }
+      }
+      break;
+
+    case WM_DEVICECHANGE:
+      {
+        print("device change");
+        if (wParam == DBT_DEVICEARRIVAL) {
+          //print("device added");
+          //DEV_BROADCAST_HDR hdr = Pointer<DEV_BROADCAST_HDR>.fromAddress(lParam).ref;
+          //print("HDR type:${hdr.dbcc_devicetype}");
+          //if (hdr.dbcc_devicetype == 5) {
+          //DEV_BROADCAST_DEVICEINTERFACE_W device =
+          //    Pointer<DEV_BROADCAST_DEVICEINTERFACE_W>.fromAddress(lParam).ref;
+          //var deviceName = convertUint16ArrayToString(device.dbcc_name);
+          //print("device name $deviceName");
+          _sender.send(_Message("deviceAppeared"));
+          //}
+        } else if (wParam == DBT_DEVICEREMOVECOMPLETE) {
+          _sender.send(_Message("deviceDisappeared"));
+        }
+      }
+      break;
   }
 
   return DefWindowProc(hWnd, uMsg, wParam, lParam);
@@ -172,10 +244,15 @@ const DEVICE_NOTIFY_ALL_INTERFACE_CLASSES = 4;
 
 final _winuser = DynamicLibrary.open('user32.dll');
 
-late final UnregisterDeviceNotification = _winuser
-    .lookup<NativeFunction<BOOL Function(PVOID)>>(
-        'UnregisterDeviceNotificationW')
-    .asFunction<int Function(PVOID)>();
+int UnregisterDeviceNotification(
+    int handle) =>
+    _UnregisterDeviceNotification(handle);
+
+final _UnregisterDeviceNotification = _winuser.lookupFunction<
+    BOOLEAN Function(IntPtr handle),
+    int Function(
+        int handle)>('UnregisterDeviceNotification');
+
 
 int RegisterDeviceNotification(
         int hRecipient,
