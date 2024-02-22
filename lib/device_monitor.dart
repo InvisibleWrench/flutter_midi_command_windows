@@ -7,9 +7,7 @@ import 'package:win32/win32.dart';
 
 late SendPort _sender;
 
-
 class DeviceMonitor {
-
   factory DeviceMonitor() {
     _instance ??= DeviceMonitor._();
     return _instance!;
@@ -21,15 +19,12 @@ class DeviceMonitor {
     _runMessagesIsolate();
   }
 
-
   final _receiver = ReceivePort();
 
-  Stream<_Message> get messages =>  _receiver.cast<_Message>();
-
-  late Isolate _iso;
+  Stream<_Message> get messages => _receiver.cast<_Message>();
 
   void _runMessagesIsolate() async {
-    _iso = await Isolate.spawn(_device_monitor, _receiver.sendPort);
+    Isolate.spawn(_device_monitor, _receiver.sendPort);
   }
 
   void destroy() {
@@ -45,8 +40,7 @@ void _device_monitor(SendPort sender) {
 
   final hInstance = GetModuleHandle(nullptr);
   const style = CS_HREDRAW | CS_VREDRAW;
-  final lpfnWndProc =
-      Pointer.fromFunction<LRESULT Function(HWND, UINT, WPARAM, LPARAM)>(_wndProc, 0);
+  final lpfnWndProc = Pointer.fromFunction<LRESULT Function(HWND, UINT, WPARAM, LPARAM)>(_wndProc, 0);
   final lpszClassName = 'STATIC'.toNativeUtf16();
   final lpWndClass = calloc<WNDCLASS>()
     ..ref.hInstance = hInstance
@@ -64,18 +58,7 @@ void _device_monitor(SendPort sender) {
       throw Exception(statusCode);
     }
 
-    var _windowId = CreateWindow(
-        lpszClassName,
-        "Message-Only FMCWin".toNativeUtf16(),
-        0,
-        0,
-        0,
-        0,
-        0,
-        HWND_MESSAGE,
-        NULL,
-        NULL,
-        nullptr);
+    var _windowId = CreateWindow(lpszClassName, "Message-Only FMCWin".toNativeUtf16(), 0, 0, 0, 0, 0, HWND_MESSAGE, NULL, NULL, nullptr);
 
     print(_windowId);
 
@@ -83,14 +66,12 @@ void _device_monitor(SendPort sender) {
 
     int bRet = 0;
 
-    while (run)
-    {
+    while (run) {
       // Use PeekMessage instead of GetMessage
       bRet = PeekMessage(msg, NULL, 0, 0, PM_REMOVE);
 
       // Check if a message is available
-      if (bRet != 0)
-      {
+      if (bRet != 0) {
         // Check for a quit message
         print(msg.ref.message);
         if (msg.ref.message == WM_QUIT) {
@@ -100,14 +81,11 @@ void _device_monitor(SendPort sender) {
 
         TranslateMessage(msg);
         DispatchMessage(msg);
-      }
-      else
-      {
+      } else {
         // Perform other tasks here when there are no messages
         // For example, update game logic, perform background processing, etc.
       }
     }
-
 
     print("done");
   } catch (e) {
@@ -125,8 +103,7 @@ void _device_monitor(SendPort sender) {
 int _deviceNotifyPointer = 0;
 
 int _wndProc(int hWnd, int uMsg, int wParam, int lParam) {
-
-  switch(uMsg) {
+  switch (uMsg) {
     case WM_CLOSE:
       print("close $_deviceNotifyPointer ");
       if (_deviceNotifyPointer != 0) {
@@ -149,8 +126,7 @@ int _wndProc(int hWnd, int uMsg, int wParam, int lParam) {
         final notificationFilter = calloc<DEV_BROADCAST_DEVICEINTERFACE_W>()
           ..ref.dbcc_size = sizeOf<DEV_BROADCAST_DEVICEINTERFACE_W>()
           ..ref.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE
-          ..ref.dbcc_classguid.setGUID(
-              GUID_DEVINTERFACE_USB_DEVICE); //  setGUID("36FC9E60-C465-11CF-8056-444553540000");=
+          ..ref.dbcc_classguid.setGUID(GUID_DEVINTERFACE_USB_DEVICE); //  setGUID("36FC9E60-C465-11CF-8056-444553540000");=
 
         try {
           _deviceNotifyPointer = RegisterDeviceNotification(
@@ -244,23 +220,12 @@ const DEVICE_NOTIFY_ALL_INTERFACE_CLASSES = 4;
 
 final _winuser = DynamicLibrary.open('user32.dll');
 
-int UnregisterDeviceNotification(
-    int handle) =>
-    _UnregisterDeviceNotification(handle);
+int UnregisterDeviceNotification(int handle) => _UnregisterDeviceNotification(handle);
 
-final _UnregisterDeviceNotification = _winuser.lookupFunction<
-    BOOLEAN Function(IntPtr handle),
-    int Function(
-        int handle)>('UnregisterDeviceNotification');
+final _UnregisterDeviceNotification = _winuser.lookupFunction<BOOLEAN Function(IntPtr handle), int Function(int handle)>('UnregisterDeviceNotification');
 
-
-int RegisterDeviceNotification(
-        int hRecipient,
-        Pointer<DEV_BROADCAST_DEVICEINTERFACE_W> notificationFilter,
-        int flags) =>
+int RegisterDeviceNotification(int hRecipient, Pointer<DEV_BROADCAST_DEVICEINTERFACE_W> notificationFilter, int flags) =>
     _RegisterDeviceNotification(hRecipient, notificationFilter.address, flags);
 
-final _RegisterDeviceNotification = _winuser.lookupFunction<
-    IntPtr Function(IntPtr hwnd, IntPtr filter, Uint32 flags),
-    int Function(
-        int hwnd, int filter, int flags)>('RegisterDeviceNotificationW');
+final _RegisterDeviceNotification = _winuser
+    .lookupFunction<IntPtr Function(IntPtr hwnd, IntPtr filter, Uint32 flags), int Function(int hwnd, int filter, int flags)>('RegisterDeviceNotificationW');
