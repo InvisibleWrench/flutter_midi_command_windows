@@ -1,23 +1,32 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_midi_command_platform_interface/flutter_midi_command_platform_interface.dart';
 
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
+import 'package:flutter_midi_command_windows/ble_midi_device.dart';
 import 'package:flutter_midi_command_windows/windows_midi_device.dart';
+import 'package:universal_ble/universal_ble.dart';
 import 'package:win32/win32.dart';
 import 'package:flutter_midi_command_windows/device_monitor.dart';
 
 class FlutterMidiCommandWindows extends MidiCommandPlatform {
-  StreamController<MidiPacket> _rxStreamController =
-      StreamController<MidiPacket>.broadcast();
+  StreamController<MidiPacket> _rxStreamController = StreamController<MidiPacket>.broadcast();
   late Stream<MidiPacket> _rxStream;
-  StreamController<String> _setupStreamController =
-      StreamController<String>.broadcast();
+  StreamController<String> _setupStreamController = StreamController<String>.broadcast();
   late Stream<String> _setupStream;
 
-  Map<String, WindowsMidiDevice> _connectedDevices =
-      Map<String, WindowsMidiDevice>();
+  StreamController<String> _bluetoothStateStreamController = StreamController<String>.broadcast();
+  late Stream<String> _bluetoothStateStream;
+
+  Map<String, WindowsMidiDevice> _connectedDevices = Map<String, WindowsMidiDevice>();
+
+  // BLE Vars
+
+  String _bleState = "unknown";
+  Map<String, BLEMidiDevice> _discoveredBLEDevices = {};
 
   factory FlutterMidiCommandWindows() {
     if (_instance == null) {
@@ -31,13 +40,12 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
   FlutterMidiCommandWindows._() {
     _setupStream = _setupStreamController.stream;
     _rxStream = _rxStreamController.stream;
+    _bluetoothStateStream = _bluetoothStateStreamController.stream;
 
     final dm = DeviceMonitor();
     dm.messages.listen((message) {
-      if (message != null) {
-        if (["deviceAppeared", "deviceDisappeared"].contains(message.event)) {
-          _setupStreamController.add(message.event);
-        }
+      if (["deviceAppeared", "deviceDisappeared"].contains(message.event)) {
+        _setupStreamController.add(message.event);
       }
     });
   }
@@ -53,7 +61,7 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
   //#region
   @override
   Future<List<MidiDevice>> get devices async {
-    var devices = Map<String, WindowsMidiDevice>();
+    var devices = Map<String, MidiDevice>();
 
     Pointer<MIDIINCAPS> inCaps = malloc<MIDIINCAPS>();
     int nMidiDeviceNum = midiInGetNumDevs();
@@ -77,8 +85,7 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
 
       bool isConnected = _connectedDevices.containsKey(id);
       print('found IN at i $i id $id for device $name');
-      devices[id] = WindowsMidiDevice(id, name, _rxStreamController,
-          _setupStreamController, _midiCB.nativeFunction.address)
+      devices[id] = WindowsMidiDevice(id, name, _rxStreamController, _setupStreamController, _midiCB.nativeFunction.address)
         ..addInput(i, inCaps.ref)
         ..connected = isConnected;
     }
@@ -109,13 +116,12 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
         print('add OUT at i $i id $id for device $name}');
 
         // Add to existing device
-        devices[id]!..addOutput(i, outCaps.ref);
+        devices[id]! as WindowsMidiDevice..addOutput(i, outCaps.ref);
       } else {
         print('found OUT at i $i id $id for device $name');
 
         bool isConnected = _connectedDevices.containsKey(id);
-        devices[id] = WindowsMidiDevice(id, name, _rxStreamController,
-            _setupStreamController, _midiCB.nativeFunction.address)
+        devices[id] = WindowsMidiDevice(id, name, _rxStreamController, _setupStreamController, _midiCB.nativeFunction.address)
           ..addOutput(i, outCaps.ref)
           ..connected = isConnected;
       }
@@ -123,55 +129,120 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
 
     free(outCaps);
 
+    devices.addAll(_discoveredBLEDevices);
+
     return devices.values.toList();
   }
 
   /// Prepares Bluetooth system
   @override
   Future<void> startBluetoothCentral() async {
-    return Future.error("Not available on windows");
+    UniversalBle.timeout = const Duration(seconds: 10);
+
+    UniversalBle.onAvailabilityChange = (state) {
+      debugPrint("ble state " + state.name);
+      _bleState = state.name;
+      _bluetoothStateStreamController.add(state.name);
+    };
+
+    UniversalBle.onScanResult = (result) {
+      if (!_discoveredBLEDevices.containsKey(result.deviceId)) {
+        if (result.name != null) {
+          debugPrint("${result.name} ${result.deviceId} ${result.manufacturerData}");
+          _discoveredBLEDevices[result.deviceId] = BLEMidiDevice(result.deviceId, result.name!, _rxStreamController);
+          _setupStreamController.add('deviceAppeared');
+        }
+      }
+    };
+
+    UniversalBle.onConnectionChanged = (deviceId, state) {
+      if (_discoveredBLEDevices.containsKey(deviceId)) {
+        if (state == BleConnectionState.connected) {
+          _discoveredBLEDevices[deviceId]!.connectionState = state;
+          _setupStreamController.add('deviceConnected');
+        } else {
+          _discoveredBLEDevices.remove(deviceId);
+          _setupStreamController.add('deviceDisconnected');
+        }
+      }
+    };
+
+    UniversalBle.onValueChanged = (deviceId, characteristicId, Uint8List data) {
+      if (_discoveredBLEDevices.containsKey(deviceId)) {
+        _discoveredBLEDevices[deviceId]!.handleData(data);
+      }
+    };
+
+    UniversalBle.onPairingStateChange = (deviceId, state, msg) {
+      if (_discoveredBLEDevices.containsKey(deviceId)) {
+        _discoveredBLEDevices[deviceId]!.pairingState = state;
+      }
+    };
+  }
+
+  /// Stream firing events whenever a change in bluetooth central state happens
+  @override
+  Stream<String>? get onBluetoothStateChanged {
+    return _bluetoothStateStream;
+  }
+
+  /// Returns the current state of the bluetooth subsystem
+  @override
+  Future<String> bluetoothState() async {
+    return _bleState;
   }
 
   /// Starts scanning for BLE MIDI devices.
   ///
   /// Found devices will be included in the list returned by [devices].
   Future<void> startScanningForBluetoothDevices() async {
-    return Future.error("Not available on windows");
+    try {
+      await UniversalBle.startScan();
+    } catch (e) {
+      print(e.toString());
+    }
   }
 
-  /// Stops scanning for BLE MIDI devices.
+  @override
   void stopScanningForBluetoothDevices() {
-    // Not implemented
+    /// Stops scanning for BLE MIDI devices.
+    print("stop scan");
+    UniversalBle.stopScan();
   }
 
   /// Connects to the device.
   @override
-  Future<void> connectToDevice(MidiDevice device,
-      {List<MidiPort>? ports}) async {
-
-    var midiDevice = device as WindowsMidiDevice;
-    var success = midiDevice.connect();
-    if (success) {
-      _connectedDevices[device.id] = midiDevice;
-      print("$_connectedDevices");
-    } else {
-      print("failed to connect $midiDevice");
+  Future<void> connectToDevice(MidiDevice device, {List<MidiPort>? ports}) async {
+    if (device is WindowsMidiDevice) {
+      var success = device.connect();
+      if (success) {
+        _connectedDevices[device.id] = device;
+        print("$_connectedDevices");
+      } else {
+        print("failed to connect $device");
+      }
+    } else if (device is BLEMidiDevice) {
+      device.connect();
     }
   }
 
   /// Disconnects from the device.
   @override
   void disconnectDevice(MidiDevice device, {bool remove = true}) {
-    if (_connectedDevices.containsKey(device.id)) {
-      var windowsDevice = _connectedDevices[device.id]!;
-      var result = windowsDevice.disconnect();
-      print(result);
-      if (result) {
-        _connectedDevices.remove(device.id);
-        _setupStreamController.add("deviceDisconnected");
-      } else {
-        print("failed to close $windowsDevice");
+    if (device is WindowsMidiDevice) {
+      if (_connectedDevices.containsKey(device.id)) {
+        var windowsDevice = _connectedDevices[device.id]!;
+        var result = windowsDevice.disconnect();
+        print(result);
+        if (result) {
+          _connectedDevices.remove(device.id);
+          _setupStreamController.add("deviceDisconnected");
+        } else {
+          print("failed to close $windowsDevice");
+        }
       }
+    } else if (device is BLEMidiDevice) {
+      device.disconnect();
     }
   }
 
@@ -199,10 +270,18 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
     if (deviceId != null) {
       // Send to specific device, if present
       _connectedDevices[deviceId]?.send(data);
+
+      _discoveredBLEDevices.values.where((element) => element.deviceId == deviceId).forEach((element) {
+        element.send(data);
+      });
     } else {
       // Send to all devices
       _connectedDevices.values.forEach((device) {
         device.send(data);
+      });
+
+      _discoveredBLEDevices.values.where((element) => element.connected).forEach((element) {
+        element.send(data);
       });
     }
   }
@@ -268,11 +347,9 @@ String midiErrorMessage(int status) {
   }
 }
 
-NativeCallable<Void Function(IntPtr, Uint32, IntPtr, IntPtr, IntPtr)> _midiCB =
-    NativeCallable<MidiInProc>.listener(_onMidiData);
+NativeCallable<Void Function(IntPtr, Uint32, IntPtr, IntPtr, IntPtr)> _midiCB = NativeCallable<MidiInProc>.listener(_onMidiData);
 
-void _onMidiData(
-    int hMidiIn, int wMsg, int dwInstance, int dwParam1, int dwParam2) {
+void _onMidiData(int hMidiIn, int wMsg, int dwInstance, int dwParam1, int dwParam2) {
   //print('midi data $hMidiIn, $wMsg, $dwInstance, $dwParam1, $dwParam2');
 
   var dev = FlutterMidiCommandWindows().findMidiDeviceForSource(hMidiIn);
@@ -293,9 +370,7 @@ void _onMidiData(
       break;
     case MIM_LONGDATA:
       var pMidiHdr = Pointer.fromAddress(dwParam1).cast<MIDIHDR>();
-      var data = pMidiHdr.ref.lpData
-          .cast<Uint8>()
-          .asTypedList(pMidiHdr.ref.dwBytesRecorded);
+      var data = pMidiHdr.ref.lpData.cast<Uint8>().asTypedList(pMidiHdr.ref.dwBytesRecorded);
       dev?.handleSysexData(data);
       break;
     case MIM_MOREDATA:

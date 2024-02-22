@@ -1,3 +1,8 @@
+## 0.0.1-dev.7
+
+* Added BLE Support
+
+
 ## 0.0.1-dev.6
 
 * Split into windows_midi_device.
