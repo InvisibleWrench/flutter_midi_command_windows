@@ -309,12 +309,25 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
   @override
   void addVirtualDevice({String? name}) {
     // Not implemented
+    print('addVirtualDevice Not implemented on Windows');
   }
 
   /// Removes a previously addd virtual MIDI source.
   @override
   void removeVirtualDevice({String? name}) {
     // Not implemented
+    print('removeVirtualDevice Not implemented on Windows');
+  }
+
+  @override
+  Future<bool?> get isNetworkSessionEnabled async {
+    return false;
+  }
+
+  @override
+  void setNetworkSessionEnabled(bool enabled) {
+    // Not implemented
+    print('setNetworkSessionEnabled Not implemented on Windows');
   }
 
   WindowsMidiDevice? findMidiDeviceForSource(int src) {

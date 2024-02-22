@@ -1,3 +1,8 @@
+## 0.0.1-dev.8
+
+* Added overrides for network session controls
+
+
 ## 0.0.1-dev.7
 
 * Added BLE Support
