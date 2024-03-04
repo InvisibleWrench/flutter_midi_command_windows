@@ -1,3 +1,8 @@
+## 0.0.1-dev.9
+
+* Specify UniversalBle git dependecy
+
+
 ## 0.0.1-dev.8
 
 * Added overrides for network session controls
