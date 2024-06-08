@@ -42,7 +42,7 @@ class WindowsMidiDevice extends MidiDevice {
     if (mIn != null) {
       var id = mIn.key;
       int result = midiInOpen(
-          hMidiInDevicePtr, id, callbackAddress, 0, CALLBACK_FUNCTION);
+          hMidiInDevicePtr, id, callbackAddress, 0, MIDI_WAVE_OPEN_TYPE.CALLBACK_FUNCTION);
       if (result != 0) {
         print("OPEN ERROR($result): ${midiErrorMessage(result)}");
         return false;
@@ -81,7 +81,7 @@ class WindowsMidiDevice extends MidiDevice {
     if (mOut != null) {
       var id = mOut.key;
 
-      int result = midiOutOpen(hMidiOutDevicePtr, id, 0, 0, CALLBACK_NULL);
+      int result = midiOutOpen(hMidiOutDevicePtr, id, 0, 0, MIDI_WAVE_OPEN_TYPE.CALLBACK_NULL);
       if (result != 0) {
         print("OUT OPEN ERROR: result");
         return false;

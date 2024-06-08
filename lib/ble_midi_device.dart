@@ -146,7 +146,6 @@ class BLEMidiDevice extends MidiDevice {
         BleOutputProperty.withoutResponse,
       );
     } catch (e) {
-      print(e);
       print('WriteError  $e');
     }
   }

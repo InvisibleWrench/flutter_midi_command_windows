@@ -28,7 +28,6 @@ class DeviceMonitor {
   }
 
   void destroy() {
-    print("close receiver");
     _receiver.close();
   }
 }
@@ -39,7 +38,7 @@ void _device_monitor(SendPort sender) {
   bool run = true;
 
   final hInstance = GetModuleHandle(nullptr);
-  const style = CS_HREDRAW | CS_VREDRAW;
+  const style = WNDCLASS_STYLES.CS_HREDRAW | WNDCLASS_STYLES.CS_VREDRAW;
   final lpfnWndProc = Pointer.fromFunction<LRESULT Function(HWND, UINT, WPARAM, LPARAM)>(_wndProc, 0);
   final lpszClassName = 'STATIC'.toNativeUtf16();
   final lpWndClass = calloc<WNDCLASS>()
@@ -60,22 +59,19 @@ void _device_monitor(SendPort sender) {
 
     var _windowId = CreateWindow(lpszClassName, "Message-Only FMCWin".toNativeUtf16(), 0, 0, 0, 0, 0, HWND_MESSAGE, NULL, NULL, nullptr);
 
-    print(_windowId);
-
     UpdateWindow(_windowId);
 
     int bRet = 0;
 
     while (run) {
       // Use PeekMessage instead of GetMessage
-      bRet = PeekMessage(msg, NULL, 0, 0, PM_REMOVE);
+      bRet = PeekMessage(msg, NULL, 0, 0, PEEK_MESSAGE_REMOVE_TYPE.PM_REMOVE);
 
       // Check if a message is available
       if (bRet != 0) {
         // Check for a quit message
         print(msg.ref.message);
         if (msg.ref.message == WM_QUIT) {
-          print("quit");
           break;
         }
 
@@ -87,7 +83,6 @@ void _device_monitor(SendPort sender) {
       }
     }
 
-    print("done");
   } catch (e) {
     print("ERROR $e");
   } finally {
@@ -95,9 +90,7 @@ void _device_monitor(SendPort sender) {
     free(lpszClassName);
     free(lpWndClass);
     free(msg);
-    print("finally");
   }
-  print("EOT");
 }
 
 int _deviceNotifyPointer = 0;
@@ -105,7 +98,6 @@ int _deviceNotifyPointer = 0;
 int _wndProc(int hWnd, int uMsg, int wParam, int lParam) {
   switch (uMsg) {
     case WM_CLOSE:
-      print("close $_deviceNotifyPointer ");
       if (_deviceNotifyPointer != 0) {
         UnregisterDeviceNotification(_deviceNotifyPointer);
         _deviceNotifyPointer = NULL;
@@ -115,13 +107,11 @@ int _wndProc(int hWnd, int uMsg, int wParam, int lParam) {
       break;
 
     case WM_DESTROY:
-      print("destroy");
       PostQuitMessage(0);
       break;
 
     case WM_CREATE:
       {
-        print("create");
         // Message window created, register for notifications
         final notificationFilter = calloc<DEV_BROADCAST_DEVICEINTERFACE_W>()
           ..ref.dbcc_size = sizeOf<DEV_BROADCAST_DEVICEINTERFACE_W>()
@@ -138,8 +128,6 @@ int _wndProc(int hWnd, int uMsg, int wParam, int lParam) {
             final statusCode = GetLastError();
             print("failed to register for device notifications: ${statusCode}");
             throw Exception(statusCode);
-          } else {
-            print("Successfully registered for device notifications $_deviceNotifyPointer");
           }
         } catch (e) {
           print("Device Notification Registration Error: $e");
@@ -151,7 +139,6 @@ int _wndProc(int hWnd, int uMsg, int wParam, int lParam) {
 
     case WM_DEVICECHANGE:
       {
-        print("device change");
         if (wParam == DBT_DEVICEARRIVAL) {
           //print("device added");
           //DEV_BROADCAST_HDR hdr = Pointer<DEV_BROADCAST_HDR>.fromAddress(lParam).ref;
@@ -178,19 +165,17 @@ String convertUint16ArrayToString(Pointer<Uint16> arrayPointer) {
   while (arrayPointer.elementAt(length).value != 0) {
     length++;
   }
-  print("String length $length");
 
   List<int> codeUnits = arrayPointer.asTypedList(length);
-  print("Code units $codeUnits");
   String result = String.fromCharCodes(codeUnits);
   return result;
 }
 
 class _Message {
   final String event;
-  final String? info;
+  String? info;
 
-  const _Message(this.event, {this.info = null});
+  _Message(this.event);
 }
 
 const DBT_DEVTYP_DEVICEINTERFACE = 0x00000005;
