@@ -6,7 +6,6 @@ import 'package:flutter_midi_command_platform_interface/flutter_midi_command_pla
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 import 'package:flutter_midi_command_windows/ble_midi_device.dart';
-import 'package:flutter_midi_command_windows/device_utils.dart';
 import 'package:flutter_midi_command_windows/windows_midi_device.dart';
 import 'package:universal_ble/universal_ble.dart';
 import 'package:win32/win32.dart';
