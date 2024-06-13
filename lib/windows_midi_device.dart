@@ -68,34 +68,34 @@ class WindowsMidiDevice extends MidiDevice {
         result = midiInPrepareHeader(
             hMidiInDevicePtr.value, _midiInHeader, sizeOf<MIDIHDR>());
         if (result != 0) {
-          print("HEY: HDR PREP ERROR: ${midiErrorMessage(result)}");
+          print("HDR PREP ERROR: ${midiErrorMessage(result)}");
           return false;
         }
 
         result = midiInPrepareHeader(
             hMidiInDevicePtr.value, _midiInHeader2, sizeOf<MIDIHDR>());
         if (result != 0) {
-          print("HEY: HDR PREP ERROR: ${midiErrorMessage(result)}");
+          print("HDR PREP ERROR: ${midiErrorMessage(result)}");
           return false;
         }
 
         result = midiInAddBuffer(
             hMidiInDevicePtr.value, _midiInHeader, sizeOf<MIDIHDR>());
         if (result != 0) {
-          print("HEY: HDR ADD ERROR: ${midiErrorMessage(result)}");
+          print("HDR ADD ERROR: ${midiErrorMessage(result)}");
           return false;
         }
 
         result = midiInAddBuffer(
             hMidiInDevicePtr.value, _midiInHeader2, sizeOf<MIDIHDR>());
         if (result != 0) {
-          print("HEY: HDR ADD ERROR: ${midiErrorMessage(result)}");
+          print("HDR ADD ERROR: ${midiErrorMessage(result)}");
           return false;
         }
 
         result = midiInStart(hMidiInDevicePtr.value);
         if (result != 0) {
-          print("HEY: START ERROR: ${midiErrorMessage(result)}");
+          print("START ERROR: ${midiErrorMessage(result)}");
           return false;
         }
       }
@@ -109,7 +109,7 @@ class WindowsMidiDevice extends MidiDevice {
       int result = midiOutOpen(
           hMidiOutDevicePtr, id, 0, 0, MIDI_WAVE_OPEN_TYPE.CALLBACK_NULL);
       if (result != 0) {
-        print("HEY: OUT OPEN ERROR: result");
+        print("OUT OPEN ERROR: result");
         return false;
       }
 
