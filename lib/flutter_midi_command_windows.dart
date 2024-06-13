@@ -87,10 +87,10 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
       }
 
       print(
-          "HEY: ${id} ${inCaps.ref.wMid} ${inCaps.ref.wPid} ${inCaps.ref.hashCode} ${inCaps.ref.dwSupport}");
+          "${id} ${inCaps.ref.wMid} ${inCaps.ref.wPid} ${inCaps.ref.hashCode} ${inCaps.ref.dwSupport}");
 
       bool isConnected = _connectedDevices.containsKey(id);
-      print('HEY: found IN at i $i id $id for device $name');
+      //print('found IN at i $i id $id for device $name');
       devices[id] = WindowsMidiDevice(id, name, _rxStreamController,
           _setupStreamController, _midiCB.nativeFunction.address)
         ..addInput(i, inCaps.ref)
@@ -120,7 +120,7 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
       }
 
       print(
-          "HEY: ${id} ${inCaps.ref.wMid} ${inCaps.ref.wPid} ${inCaps.ref.hashCode} ${inCaps.ref.dwSupport}");
+         // "${id} ${inCaps.ref.wMid} ${inCaps.ref.wPid} ${inCaps.ref.hashCode} ${inCaps.ref.dwSupport}");
 
       if (devices.containsKey(id)) {
         // print('add OUT at i $i id $id for device $name}');
@@ -305,7 +305,7 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
   /// The event contains the raw bytes contained in the MIDI package.
   @override
   Stream<MidiPacket>? get onMidiDataReceived {
-    print('HEY: MIDI DATA RECEIVED ');
+    //print('MIDI DATA RECEIVED ');
     return _rxStream;
   }
 
@@ -386,7 +386,7 @@ final List<int> partialSysExBuffer = [];
 
 void _onMidiData(
     int hMidiIn, int wMsg, int dwInstance, int dwParam1, int dwParam2) {
-  // print('HEY: midi data $hMidiIn, $wMsg, $dwInstance, $dwParam1, $dwParam2');
+  // print('midi data $hMidiIn, $wMsg, $dwInstance, $dwParam1, $dwParam2');
   var sw = Stopwatch()..start();
 
   var dev = FlutterMidiCommandWindows().findMidiDeviceForSource(hMidiIn);
@@ -427,7 +427,7 @@ void _onMidiData(
         //var data = pMidiHdr.ref.lpData
         //    .cast<Uint8>()
         //    .asTypedList(pMidiHdr.ref.dwBytesRecorded);
-        // print('HEY: data in midi command ${data}');
+       
       } else {
         // Decode and log each flag for debugging
         if ((midiHdr.dwFlags & MHDR_PREPARED) != 0) {
@@ -440,7 +440,7 @@ void _onMidiData(
 
       break;
     case MIM_MOREDATA:
-      print("HEY: More data - unhandled!");
+      print("More data - unhandled!");
       break;
     case MIM_ERROR:
       print("Error");
