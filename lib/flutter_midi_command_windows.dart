@@ -119,9 +119,6 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
         id = id + " (${deviceOutputs[name]})";
       }
 
-      print(
-         // "${id} ${inCaps.ref.wMid} ${inCaps.ref.wPid} ${inCaps.ref.hashCode} ${inCaps.ref.dwSupport}");
-
       if (devices.containsKey(id)) {
         // print('add OUT at i $i id $id for device $name}');
 
