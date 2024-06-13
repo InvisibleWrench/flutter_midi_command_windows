@@ -189,12 +189,12 @@ class WindowsMidiDevice extends MidiDevice {
   }
 
   handleData(Uint8List data, int timestamp) {
-    print('handle data $data');
+   // print('handle data $data');
     _rxStreamCtrl.add(MidiPacket(data, timestamp, this));
   }
 
   handleSysexData(Uint8List data, Pointer<MIDIHDR> midiHdrPointer) {
-     print('handle SysEX: $data');
+    // print('handle SysEX: $data');
     _rxStreamCtrl.add(MidiPacket(data, 0, this));
     _resetHeader(midiHdrPointer);
   }
