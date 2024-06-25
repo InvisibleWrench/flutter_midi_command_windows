@@ -86,8 +86,8 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
         id = id + " (${deviceInputs[name]})";
       }
 
-      print(
-          "${id} ${inCaps.ref.wMid} ${inCaps.ref.wPid} ${inCaps.ref.hashCode} ${inCaps.ref.dwSupport}");
+      //print(
+      //    "${id} ${inCaps.ref.wMid} ${inCaps.ref.wPid} ${inCaps.ref.hashCode} ${inCaps.ref.dwSupport}");
 
       bool isConnected = _connectedDevices.containsKey(id);
       //print('found IN at i $i id $id for device $name');
