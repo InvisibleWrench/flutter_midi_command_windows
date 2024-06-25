@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_midi_command_platform_interface/flutter_midi_command_platform_interface.dart';
@@ -12,15 +13,19 @@ import 'package:win32/win32.dart';
 import 'package:flutter_midi_command_windows/device_monitor.dart';
 
 class FlutterMidiCommandWindows extends MidiCommandPlatform {
-  StreamController<MidiPacket> _rxStreamController = StreamController<MidiPacket>.broadcast();
+  StreamController<MidiPacket> _rxStreamController =
+      StreamController<MidiPacket>.broadcast();
   late Stream<MidiPacket> _rxStream;
-  StreamController<String> _setupStreamController = StreamController<String>.broadcast();
+  StreamController<String> _setupStreamController =
+      StreamController<String>.broadcast();
   late Stream<String> _setupStream;
 
-  StreamController<String> _bluetoothStateStreamController = StreamController<String>.broadcast();
+  StreamController<String> _bluetoothStateStreamController =
+      StreamController<String>.broadcast();
   late Stream<String> _bluetoothStateStream;
 
-  Map<String, WindowsMidiDevice> _connectedDevices = Map<String, WindowsMidiDevice>();
+  Map<String, WindowsMidiDevice> _connectedDevices =
+      Map<String, WindowsMidiDevice>();
 
   // BLE Vars
 
@@ -59,7 +64,6 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
   //#region
   @override
   Future<List<MidiDevice>> get devices async {
-
     var devices = Map<String, MidiDevice>();
 
     Pointer<MIDIINCAPS> inCaps = malloc<MIDIINCAPS>();
@@ -82,11 +86,13 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
         id = id + " (${deviceInputs[name]})";
       }
 
-      //  print("${id} ${inCaps.ref.wMid} ${inCaps.ref.wPid} ${inCaps.ref.hashCode} ${inCaps.ref.dwSupport}");
+      //print(
+      //    "${id} ${inCaps.ref.wMid} ${inCaps.ref.wPid} ${inCaps.ref.hashCode} ${inCaps.ref.dwSupport}");
 
       bool isConnected = _connectedDevices.containsKey(id);
-      // print('found IN at i $i id $id for device $name');
-      devices[id] = WindowsMidiDevice(id, name, _rxStreamController, _setupStreamController, _midiCB.nativeFunction.address)
+      //print('found IN at i $i id $id for device $name');
+      devices[id] = WindowsMidiDevice(id, name, _rxStreamController,
+          _setupStreamController, _midiCB.nativeFunction.address)
         ..addInput(i, inCaps.ref)
         ..connected = isConnected;
     }
@@ -103,7 +109,6 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
       var name = outCaps.ref.szPname;
       var id = name;
 
-
       if (!deviceOutputs.containsKey(name)) {
         deviceOutputs[name] = 0;
       } else {
@@ -114,8 +119,6 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
         id = id + " (${deviceOutputs[name]})";
       }
 
-      print("${id} ${inCaps.ref.wMid} ${inCaps.ref.wPid} ${inCaps.ref.hashCode} ${inCaps.ref.dwSupport}");
-
       if (devices.containsKey(id)) {
         // print('add OUT at i $i id $id for device $name}');
 
@@ -125,7 +128,8 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
         // print('found OUT at i $i id $id for device $name');
 
         bool isConnected = _connectedDevices.containsKey(id);
-        devices[id] = WindowsMidiDevice(id, name, _rxStreamController, _setupStreamController, _midiCB.nativeFunction.address)
+        devices[id] = WindowsMidiDevice(id, name, _rxStreamController,
+            _setupStreamController, _midiCB.nativeFunction.address)
           ..addOutput(i, outCaps.ref)
           ..connected = isConnected;
       }
@@ -151,8 +155,10 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
     UniversalBle.onScanResult = (result) {
       if (!_discoveredBLEDevices.containsKey(result.deviceId)) {
         if (result.name != null) {
-          debugPrint("${result.name} ${result.deviceId} ${result.manufacturerData}");
-          _discoveredBLEDevices[result.deviceId] = BLEMidiDevice(result.deviceId, result.name!, _rxStreamController);
+          debugPrint(
+              "${result.name} ${result.deviceId} ${result.manufacturerData}");
+          _discoveredBLEDevices[result.deviceId] =
+              BLEMidiDevice(result.deviceId, result.name!, _rxStreamController);
           _setupStreamController.add('deviceAppeared');
         }
       }
@@ -201,8 +207,7 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
   Future<void> startScanningForBluetoothDevices() async {
     try {
       await UniversalBle.startScan(
-        scanFilter: ScanFilter(withServices: [MIDI_SERVICE_ID])
-      );
+          scanFilter: ScanFilter(withServices: [MIDI_SERVICE_ID]));
     } catch (e) {
       print(e.toString());
     }
@@ -216,7 +221,8 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
 
   /// Connects to the device.
   @override
-  Future<void> connectToDevice(MidiDevice device, {List<MidiPort>? ports}) async {
+  Future<void> connectToDevice(MidiDevice device,
+      {List<MidiPort>? ports}) async {
     if (device is WindowsMidiDevice) {
       var success = device.connect();
       if (success) {
@@ -272,7 +278,9 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
       // Send to specific device, if present
       _connectedDevices[deviceId]?.send(data);
 
-      _discoveredBLEDevices.values.where((element) => element.deviceId == deviceId).forEach((element) {
+      _discoveredBLEDevices.values
+          .where((element) => element.deviceId == deviceId)
+          .forEach((element) {
         element.send(data);
       });
     } else {
@@ -281,7 +289,9 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
         device.send(data);
       });
 
-      _discoveredBLEDevices.values.where((element) => element.connected).forEach((element) {
+      _discoveredBLEDevices.values
+          .where((element) => element.connected)
+          .forEach((element) {
         element.send(data);
       });
     }
@@ -292,6 +302,7 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
   /// The event contains the raw bytes contained in the MIDI package.
   @override
   Stream<MidiPacket>? get onMidiDataReceived {
+    //print('MIDI DATA RECEIVED ');
     return _rxStream;
   }
 
@@ -361,12 +372,23 @@ String midiErrorMessage(int status) {
   }
 }
 
-NativeCallable<Void Function(IntPtr, Uint32, IntPtr, IntPtr, IntPtr)> _midiCB = NativeCallable<MIDIINPROC>.listener(_onMidiData);
+NativeCallable<Void Function(IntPtr, Uint32, IntPtr, IntPtr, IntPtr)> _midiCB =
+    NativeCallable<MIDIINPROC>.listener(_onMidiData);
 
-void _onMidiData(int hMidiIn, int wMsg, int dwInstance, int dwParam1, int dwParam2) {
-  //print('midi data $hMidiIn, $wMsg, $dwInstance, $dwParam1, $dwParam2');
+const int MHDR_DONE = 0x00000001;
+const int MHDR_PREPARED = 0x00000002;
+const int MHDR_INQUEUE = 0x00000004;
+
+final List<int> partialSysExBuffer = [];
+
+void _onMidiData(
+    int hMidiIn, int wMsg, int dwInstance, int dwParam1, int dwParam2) {
+  // print('midi data $hMidiIn, $wMsg, $dwInstance, $dwParam1, $dwParam2');
+  var sw = Stopwatch()..start();
 
   var dev = FlutterMidiCommandWindows().findMidiDeviceForSource(hMidiIn);
+  final midiHdrPointer = Pointer<MIDIHDR>.fromAddress(dwParam1);
+  final midiHdr = midiHdrPointer.ref;
 
   switch (wMsg) {
     case MIM_OPEN:
@@ -381,9 +403,38 @@ void _onMidiData(int hMidiIn, int wMsg, int dwInstance, int dwParam1, int dwPara
       dev?.handleData(data, dwParam2);
       break;
     case MIM_LONGDATA:
-      var pMidiHdr = Pointer.fromAddress(dwParam1).cast<MIDIHDR>();
-      var data = pMidiHdr.ref.lpData.cast<Uint8>().asTypedList(pMidiHdr.ref.dwBytesRecorded);
-      dev?.handleSysexData(data);
+      if ((midiHdr.dwFlags & MHDR_DONE) != 0) {
+
+        final dataPointer = midiHdr.lpData.cast<Uint8>();
+        final messageData = dataPointer.asTypedList(midiHdr.dwBytesRecorded);
+
+        if (messageData.isNotEmpty && messageData.first == 0xF0) {
+          partialSysExBuffer.clear();
+        }
+
+        partialSysExBuffer.addAll(messageData);
+
+        if (partialSysExBuffer.isNotEmpty && partialSysExBuffer.last == 0xF7) {
+          dev?.handleSysexData(messageData, midiHdrPointer);
+          partialSysExBuffer.clear();
+        }
+
+        //var pMidiHdr = Pointer.fromAddress(dwParam1).cast<MIDIHDR>();
+
+        //var data = pMidiHdr.ref.lpData
+        //    .cast<Uint8>()
+        //    .asTypedList(pMidiHdr.ref.dwBytesRecorded);
+       
+      } else {
+        // Decode and log each flag for debugging
+        if ((midiHdr.dwFlags & MHDR_PREPARED) != 0) {
+          print('MHDR_PREPARED is set');
+        }
+        if ((midiHdr.dwFlags & MHDR_INQUEUE) != 0) {
+          print('MHDR_INQUEUE is set');
+        }
+      }
+
       break;
     case MIM_MOREDATA:
       print("More data - unhandled!");
