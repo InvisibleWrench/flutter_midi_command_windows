@@ -47,8 +47,6 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
     _rxStream = _rxStreamController.stream;
     _bluetoothStateStream = _bluetoothStateStreamController.stream;
 
-    print("fmc win start");
-
     DeviceManager().addListener(() {
       var event = DeviceManager().lastEvent;
       if (event != null) {
@@ -65,7 +63,6 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
   ///
   /// This class implements the `package:flutter_midi_command_platform_interface` functionality for windows
   static void registerWith() {
-    print("fmc win register");
     MidiCommandPlatform.instance = FlutterMidiCommandWindows();
   }
 
