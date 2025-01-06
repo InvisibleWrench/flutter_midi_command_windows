@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_midi_command_platform_interface/flutter_midi_command_platform_interface.dart';
@@ -10,7 +9,9 @@ import 'package:flutter_midi_command_windows/ble_midi_device.dart';
 import 'package:flutter_midi_command_windows/windows_midi_device.dart';
 import 'package:universal_ble/universal_ble.dart';
 import 'package:win32/win32.dart';
-import 'package:flutter_midi_command_windows/device_monitor.dart';
+import 'package:device_manager/device_event.dart';
+import 'package:device_manager/device_manager.dart';
+
 
 class FlutterMidiCommandWindows extends MidiCommandPlatform {
   StreamController<MidiPacket> _rxStreamController =
@@ -46,10 +47,16 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
     _rxStream = _rxStreamController.stream;
     _bluetoothStateStream = _bluetoothStateStreamController.stream;
 
-    final dm = DeviceMonitor();
-    dm.messages.listen((message) {
-      if (["deviceAppeared", "deviceDisappeared"].contains(message.event)) {
-        _setupStreamController.add(message.event);
+    print("fmc win start");
+
+    DeviceManager().addListener(() {
+      var event = DeviceManager().lastEvent;
+      if (event != null) {
+        if (event.eventType == EventType.add) {
+          _setupStreamController.add("deviceAppeared");
+        } else if (event.eventType == EventType.remove) {
+          _setupStreamController.add("deviceDisappeared");
+        }
       }
     });
   }
@@ -58,6 +65,7 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
   ///
   /// This class implements the `package:flutter_midi_command_platform_interface` functionality for windows
   static void registerWith() {
+    print("fmc win register");
     MidiCommandPlatform.instance = FlutterMidiCommandWindows();
   }
 
@@ -258,8 +266,6 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
   void teardown() {
     // Close callback isolate
     _midiCB.close();
-
-    DeviceMonitor().destroy();
 
     _connectedDevices.values.forEach((device) {
       disconnectDevice(device, remove: false);
