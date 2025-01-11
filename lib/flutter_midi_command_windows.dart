@@ -47,6 +47,11 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
     _rxStream = _rxStreamController.stream;
     _bluetoothStateStream = _bluetoothStateStreamController.stream;
 
+    _setupDeviceManager();
+  }
+
+  _setupDeviceManager() async {
+    await Future.delayed(Duration(seconds: 3));
     DeviceManager().addListener(() {
       var event = DeviceManager().lastEvent;
       if (event != null) {
