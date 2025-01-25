@@ -1,3 +1,7 @@
+## 0.2.0
+
+* Use device_manager package for USB device detection.
+
 ## 0.1.0
 
 * Cleanup
