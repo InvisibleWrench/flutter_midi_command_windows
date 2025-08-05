@@ -1,7 +1,7 @@
 ## 0.3.0
 
 * Updated device_manager package to 0.0.7, which includes the fix for Windows
-* Updated UniversalBle package to 0.20.0, with minor API changes
+* Updated UniversalBle package to 0.21.0, with minor API changes
 
 ## 0.2.0
 

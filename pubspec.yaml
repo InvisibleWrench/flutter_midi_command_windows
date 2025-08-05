@@ -13,7 +13,7 @@ dependencies:
   flutter_midi_command_platform_interface: ^0.4.3
   ffi: ^2.1.4
   win32: ^5.14.0
-  universal_ble: ^0.20.2
+  universal_ble: ^0.21.0
   device_manager: ^0.0.7
 
 dev_dependencies:

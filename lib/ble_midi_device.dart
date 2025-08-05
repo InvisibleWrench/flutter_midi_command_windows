@@ -138,12 +138,12 @@ class BLEMidiDevice extends MidiDevice {
 
   _sendBytes(List<int> bytes) async {
     try {
-      await UniversalBle.writeValue(
+      await UniversalBle.write(
         deviceId,
         _midiService!.uuid,
         _midiCharacteristic!.uuid,
         Uint8List.fromList(bytes),
-        BleOutputProperty.withoutResponse,
+        withoutResponse: true,
       );
     } catch (e) {
       print('WriteError  $e');
