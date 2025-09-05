@@ -12,21 +12,20 @@ import 'package:win32/win32.dart';
 import 'package:device_manager/device_event.dart';
 import 'package:device_manager/device_manager.dart';
 
-
 class FlutterMidiCommandWindows extends MidiCommandPlatform {
   StreamController<MidiPacket> _rxStreamController =
-  StreamController<MidiPacket>.broadcast();
+      StreamController<MidiPacket>.broadcast();
   late Stream<MidiPacket> _rxStream;
   StreamController<String> _setupStreamController =
-  StreamController<String>.broadcast();
+      StreamController<String>.broadcast();
   late Stream<String> _setupStream;
 
   StreamController<String> _bluetoothStateStreamController =
-  StreamController<String>.broadcast();
+      StreamController<String>.broadcast();
   late Stream<String> _bluetoothStateStream;
 
   Map<String, WindowsMidiDevice> _connectedDevices =
-  Map<String, WindowsMidiDevice>();
+      Map<String, WindowsMidiDevice>();
 
   // BLE Vars
 
@@ -166,7 +165,7 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
       if (!_discoveredBLEDevices.containsKey(result.deviceId)) {
         if (result.name != null) {
           debugPrint(
-              "${result.name} ${result.deviceId} ${result.manufacturerDataList.map((e)=> e.toString()).join(', ')}");
+              "${result.name} ${result.deviceId} ${result.manufacturerDataList.map((e) => e.toString()).join(', ')}");
           _discoveredBLEDevices[result.deviceId] =
               BLEMidiDevice(result.deviceId, result.name!, _rxStreamController);
           _setupStreamController.add('deviceAppeared');
@@ -174,11 +173,11 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
       }
     };
 
-    UniversalBle.onConnectionChange =
-        (deviceId, isConnected, error) {
+    UniversalBle.onConnectionChange = (deviceId, isConnected, error) {
       if (_discoveredBLEDevices.containsKey(deviceId)) {
         if (isConnected) {
-          _discoveredBLEDevices[deviceId]!.connectionState = BleConnectionState.connected;
+          _discoveredBLEDevices[deviceId]!.connectionState =
+              BleConnectionState.connected;
           _setupStreamController.add('deviceConnected');
         } else {
           _discoveredBLEDevices.remove(deviceId);
@@ -193,9 +192,9 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
       }
     };
 
-    UniversalBle.onPairingStateChange = (deviceId, state) {
+    UniversalBle.onPairingStateChange = (deviceId, isPaired) {
       if (_discoveredBLEDevices.containsKey(deviceId)) {
-        _discoveredBLEDevices[deviceId]!.pairingState = state;
+        _discoveredBLEDevices[deviceId]!.pairingState = isPaired;
       }
     };
   }
@@ -359,7 +358,7 @@ class FlutterMidiCommandWindows extends MidiCommandPlatform {
     }
     return null;
   }
-//#endregion
+  //#endregion
 }
 
 String midiErrorMessage(int status) {
@@ -382,7 +381,7 @@ String midiErrorMessage(int status) {
 }
 
 NativeCallable<Void Function(IntPtr, Uint32, IntPtr, IntPtr, IntPtr)> _midiCB =
-NativeCallable<MIDIINPROC>.listener(_onMidiData);
+    NativeCallable<MIDIINPROC>.listener(_onMidiData);
 
 const int MHDR_DONE = 0x00000001;
 const int MHDR_PREPARED = 0x00000002;
@@ -392,8 +391,6 @@ final List<int> partialSysExBuffer = [];
 
 void _onMidiData(
     int hMidiIn, int wMsg, int dwInstance, int dwParam1, int dwParam2) {
-  // print('midi data $hMidiIn, $wMsg, $dwInstance, $dwParam1, $dwParam2');
-
   var dev = FlutterMidiCommandWindows().findMidiDeviceForSource(hMidiIn);
   final midiHdrPointer = Pointer<MIDIHDR>.fromAddress(dwParam1);
   final midiHdr = midiHdrPointer.ref;
@@ -406,13 +403,12 @@ void _onMidiData(
       dev?.connected = false;
       break;
     case MM_MIM_DATA:
-    // print("data! $dwParam1 at: $dwParam2");
+      // print("data! $dwParam1 at: $dwParam2");
       var data = Uint32List.fromList([dwParam1]).buffer.asUint8List();
       dev?.handleData(data, dwParam2);
       break;
     case MM_MIM_LONGDATA:
       if ((midiHdr.dwFlags & MHDR_DONE) != 0) {
-
         final dataPointer = midiHdr.lpData.cast<Uint8>();
         final messageData = dataPointer.asTypedList(midiHdr.dwBytesRecorded);
 
@@ -432,7 +428,6 @@ void _onMidiData(
         //var data = pMidiHdr.ref.lpData
         //    .cast<Uint8>()
         //    .asTypedList(pMidiHdr.ref.dwBytesRecorded);
-
       } else {
         // Decode and log each flag for debugging
         if ((midiHdr.dwFlags & MHDR_PREPARED) != 0) {

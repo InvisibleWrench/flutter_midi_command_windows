@@ -49,7 +49,7 @@ class BLEMidiDevice extends MidiDevice {
   }
 
   disconnect() {
-    UniversalBle.setNotifiable(deviceId, _midiService!.uuid, _midiCharacteristic!.uuid, BleInputProperty.disabled);
+    UniversalBle.unsubscribe(deviceId, _midiService!.uuid, _midiCharacteristic!.uuid);
     UniversalBle.disconnect(deviceId);
   }
 
@@ -162,9 +162,9 @@ class BLEMidiDevice extends MidiDevice {
     if (_midiService != null) {
       _midiCharacteristic = _midiService!.characteristics.where((characteristic) => characteristic.uuid.toUpperCase() == MIDI_CHARACTERISTIC_ID).firstOrNull;
       if (_midiCharacteristic != null) {
-        var isPaired = await UniversalBle.isPaired(deviceId);
-
-        if (isPaired ?? false) {
+        var isPaired = await UniversalBle.isPaired(deviceId) ?? false;
+        
+        if (isPaired) {
           _startNotify();
         } else {
           try {
@@ -183,7 +183,7 @@ class BLEMidiDevice extends MidiDevice {
 
   _startNotify() {
     try {
-      UniversalBle.setNotifiable(deviceId, _midiService!.uuid, _midiCharacteristic!.uuid, BleInputProperty.notification);
+      UniversalBle.subscribeNotifications(deviceId, _midiService!.uuid, _midiCharacteristic!.uuid);
     } catch (e) {
       print(e);
     }
