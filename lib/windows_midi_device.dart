@@ -8,6 +8,9 @@ import 'package:win32/win32.dart';
 
 import 'flutter_midi_command_windows.dart';
 
+
+const _numberOfBuffers = 4;
+
 class WindowsMidiDevice extends MidiDevice {
   Map<int, MIDIINCAPS> _ins = {};
   Map<int, MIDIOUTCAPS> _outs = {};
@@ -20,13 +23,10 @@ class WindowsMidiDevice extends MidiDevice {
 
   int callbackAddress;
 
-  final _bufferSize = 4096;
+  final _bufferSize = 8192;
 
-  Pointer<MIDIHDR> _midiInHeader = nullptr;
-  Pointer<BYTE> _midiInBuffer = nullptr;
-
-  Pointer<MIDIHDR> _midiInHeader2 = nullptr;
-  Pointer<BYTE> _midiInBuffer2 = nullptr;
+  List<Pointer<MIDIHDR>> _midiInHeaders = List.generate(_numberOfBuffers, (index) => nullptr);
+  List<Pointer<BYTE>> _midiInBuffers = List.generate(_numberOfBuffers, (index) => nullptr);
 
   Pointer<MIDIHDR> _midiOutHeader = nullptr;
   Pointer<BYTE> _midiOutBuffer = nullptr;
@@ -50,47 +50,27 @@ class WindowsMidiDevice extends MidiDevice {
         return false;
       } else {
         // Setup buffer
-        _midiInBuffer = malloc<BYTE>(_bufferSize);
-        _midiInHeader = malloc<MIDIHDR>();
-        _midiInHeader.ref.lpData = _midiInBuffer as LPSTR;
-        _midiInHeader.ref.dwBufferLength = _bufferSize;
-        _midiInHeader.ref.dwFlags = 0;
-        _midiInHeader.ref.dwBytesRecorded = 0;
+        for (int i = 0; i < _numberOfBuffers; i++) {
+          _midiInBuffers[i] = malloc<BYTE>(_bufferSize);
+          _midiInHeaders[i] = malloc<MIDIHDR>();
+          _midiInHeaders[i].ref.lpData = _midiInBuffers[i] as LPSTR;
+          _midiInHeaders[i].ref.dwBufferLength = _bufferSize;
+          _midiInHeaders[i].ref.dwFlags = 0;
+          _midiInHeaders[i].ref.dwBytesRecorded = 0;
 
-        // Setup buffer 2
-        _midiInBuffer2 = malloc<BYTE>(_bufferSize);
-        _midiInHeader2 = malloc<MIDIHDR>();
-        _midiInHeader2.ref.lpData = _midiInBuffer2 as LPSTR;
-        _midiInHeader2.ref.dwBufferLength = _bufferSize;
-        _midiInHeader2.ref.dwFlags = 0;
-        _midiInHeader2.ref.dwBytesRecorded = 0;
+          result = midiInPrepareHeader(
+              hMidiInDevicePtr.value, _midiInHeaders[i], sizeOf<MIDIHDR>());
+          if (result != 0) {
+            print("HDR PREP ERROR: ${midiErrorMessage(result)}");
+            return false;
+          }
 
-        result = midiInPrepareHeader(
-            hMidiInDevicePtr.value, _midiInHeader, sizeOf<MIDIHDR>());
-        if (result != 0) {
-          print("HDR PREP ERROR: ${midiErrorMessage(result)}");
-          return false;
-        }
-
-        result = midiInPrepareHeader(
-            hMidiInDevicePtr.value, _midiInHeader2, sizeOf<MIDIHDR>());
-        if (result != 0) {
-          print("HDR PREP ERROR: ${midiErrorMessage(result)}");
-          return false;
-        }
-
-        result = midiInAddBuffer(
-            hMidiInDevicePtr.value, _midiInHeader, sizeOf<MIDIHDR>());
-        if (result != 0) {
-          print("HDR ADD ERROR: ${midiErrorMessage(result)}");
-          return false;
-        }
-
-        result = midiInAddBuffer(
-            hMidiInDevicePtr.value, _midiInHeader2, sizeOf<MIDIHDR>());
-        if (result != 0) {
-          print("HDR ADD ERROR: ${midiErrorMessage(result)}");
-          return false;
+          result = midiInAddBuffer(
+              hMidiInDevicePtr.value, _midiInHeaders[i], sizeOf<MIDIHDR>());
+          if (result != 0) {
+            print("HDR ADD ERROR: ${midiErrorMessage(result)}");
+            return false;
+          }
         }
 
         result = midiInStart(hMidiInDevicePtr.value);
@@ -129,15 +109,15 @@ class WindowsMidiDevice extends MidiDevice {
         print("RESET ERROR($result): ${midiErrorMessage(result)}");
       }
 
-      result = midiInUnprepareHeader(
-          hMidiInDevicePtr.value, _midiInHeader, sizeOf<MIDIHDR>());
-      if (result != 0) {
-        print("UNPREPARE ERROR($result): ${midiErrorMessage(result)}");
-      }
-      result = midiInUnprepareHeader(
-          hMidiInDevicePtr.value, _midiInHeader2, sizeOf<MIDIHDR>());
-      if (result != 0) {
-        print("UNPREPARE ERROR($result): ${midiErrorMessage(result)}");
+      for (int i=0; i < _numberOfBuffers; i++) {
+        if (_midiInHeaders[i] != nullptr) {
+          midiInUnprepareHeader(
+              hMidiInDevicePtr.value, _midiInHeaders[i], sizeOf<MIDIHDR>());
+          free(_midiInHeaders[i]);
+        }
+        if (_midiInBuffers[i] != nullptr) {
+          free(_midiInBuffers[i]);
+        }
       }
 
       result = midiInStop(hMidiInDevicePtr.value);
@@ -161,10 +141,6 @@ class WindowsMidiDevice extends MidiDevice {
       free(hMidiOutDevicePtr);
     }
 
-    free(_midiInBuffer);
-    free(_midiInHeader);
-    free(_midiInBuffer2);
-    free(_midiInHeader2);
     free(_midiOutBuffer);
     free(_midiOutHeader);
 
