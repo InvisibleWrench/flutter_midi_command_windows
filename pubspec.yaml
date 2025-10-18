@@ -1,6 +1,6 @@
 name: flutter_midi_command_windows
 description: FlutterMidiCommand for windows.
-version: 0.2.0
+version: 0.3.0
 homepage: https://github.com/InvisibleWrench/FlutterMidiCommand
 
 environment:
@@ -10,14 +10,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_midi_command_platform_interface: ^0.4.0
-  ffi: ^2.1.0
-  win32: ^5.5.0
-  universal_ble: ^0.9.11
-  device_manager: #^0.0.2
-    git: 
-      url: https://github.com/bojidartonchev/device_manager.git
-      ref: c53f37f10b1286590e6487d8d344021a700ca04c # use PR #3
+  flutter_midi_command_platform_interface: ^0.4.3
+  ffi: ^2.1.4
+  win32: ^5.14.0
+  universal_ble: ^0.21.0
+  device_manager: ^0.0.7
 
 dev_dependencies:
   flutter_test:

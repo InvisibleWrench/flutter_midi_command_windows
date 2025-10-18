@@ -43,8 +43,8 @@ class WindowsMidiDevice extends MidiDevice {
     var mIn = _ins.entries.firstOrNull;
     if (mIn != null) {
       var id = mIn.key;
-      int result = midiInOpen(hMidiInDevicePtr, id, callbackAddress, 0,
-          MIDI_WAVE_OPEN_TYPE.CALLBACK_FUNCTION);
+      int result = midiInOpen(
+          hMidiInDevicePtr, id, callbackAddress, 0, CALLBACK_FUNCTION);
       if (result != 0) {
         print("OPEN ERROR($result): ${midiErrorMessage(result)}");
         return false;
@@ -86,8 +86,7 @@ class WindowsMidiDevice extends MidiDevice {
     if (mOut != null) {
       var id = mOut.key;
 
-      int result = midiOutOpen(
-          hMidiOutDevicePtr, id, 0, 0, MIDI_WAVE_OPEN_TYPE.CALLBACK_NULL);
+      int result = midiOutOpen(hMidiOutDevicePtr, id, 0, 0, CALLBACK_NULL);
       if (result != 0) {
         print("OUT OPEN ERROR: result");
         return false;
@@ -165,7 +164,7 @@ class WindowsMidiDevice extends MidiDevice {
   }
 
   handleData(Uint8List data, int timestamp) {
-   // print('handle data $data');
+    // print('handle data $data');
     _rxStreamCtrl.add(MidiPacket(data, timestamp, this));
   }
 
@@ -198,7 +197,7 @@ class WindowsMidiDevice extends MidiDevice {
     result = midiOutUnprepareHeader(
         hMidiOutDevicePtr.value, _midiOutHeader, sizeOf<MIDIHDR>());
     if (result != 0) {
-      print("OUT UNPREEOARE ERROR($result): ${midiErrorMessage(result)}");
+      print("OUT UNPREPARE ERROR($result): ${midiErrorMessage(result)}");
     }
   }
 }
